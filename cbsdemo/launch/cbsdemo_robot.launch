@@ -3,5 +3,6 @@
         <arg name="interactive_manipulation" value="true"/>
         <arg name="maps" value="true"/>
         <arg name="hrl" value="true"/>
+        <arg name="rosbridge" value="false"/>
    </include>
 </launch>
