@@ -1,0 +1,14 @@
+<package>
+  <description brief="cbsdemo">
+
+     cbsdemo
+
+  </description>
+  <author>haidai</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/cbsdemo</url>
+
+</package>
+
+
