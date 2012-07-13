@@ -10,6 +10,8 @@
   <url>http://ros.org/wiki/cbsdemo</url>
 
   <depend package="rcommander_pr2_gui"/>
+  <depend package="hrl_face_adls"/>
+  <depend package="assistive_teleop"/>
 
 </package>
 
