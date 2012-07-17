@@ -1,8 +1,12 @@
 <launch>
+   <arg name="rosbridge" default="true"/>
+   <arg name="interactive_manipulation" value="false"/>
+
    <include file="$(find rcommander_pr2_gui)/launch/rcommander_robot.launch">
-        <arg name="interactive_manipulation" value="true"/>
-        <arg name="maps" value="true"/>
-        <arg name="hrl" value="true"/>
-        <arg name="rosbridge" value="false"/>
+        <arg name="interactive_manipulation" value="$(arg interactive_manipulation)"/>
+        <arg name="maps" value="false"/>
+        <arg name="hrl" value="false"/>
+        <arg name="wg" value="true"/>
+        <arg name="rosbridge" value="$(arg rosbridge)"/>
    </include>
 </launch>
