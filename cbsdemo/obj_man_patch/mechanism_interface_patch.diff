@@ -1,0 +1,94 @@
+Index: object_manipulator/include/object_manipulator/tools/mechanism_interface.h
+===================================================================
+--- object_manipulator/include/object_manipulator/tools/mechanism_interface.h	(revision 54836)
++++ object_manipulator/include/object_manipulator/tools/mechanism_interface.h	(working copy)
+@@ -135,6 +135,10 @@
+ 
+   //! Calls the switch_controllers service
+   bool callSwitchControllers(std::vector<std::string> start_controllers, std::vector<std::string> stop_controllers);
++
++  //! Looks up a list of possible running controllers on the arm_side
++  //! and returns either the one currently running or an empty string if none are.
++  std::string getRunningArmController(std::string arm_name);
+   
+   //! Checks if the planning scene is the same as the last one requested, to avoid unnecessary calls
+   /*! Returns true if the collision operations and link paddings are identical to the last ones requested. */
+Index: object_manipulator/src/tools/mechanism_interface.cpp
+===================================================================
+--- object_manipulator/src/tools/mechanism_interface.cpp	(revision 54836)
++++ object_manipulator/src/tools/mechanism_interface.cpp	(working copy)
+@@ -64,6 +64,7 @@
+ 
+ static const std::string SWITCH_CONTROLLER_SERVICE_NAME = "/switch_controller";
+ static const std::string LIST_CONTROLLERS_SERVICE_NAME = "/list_controllers";
++static const std::string LOADED_CTRLS_PARAM = "/controller_manager/loaded_ctrls";
+ static const std::string CARTESIAN_COMMAND_SUFFIX = "/cart/command_pose";
+ static const std::string CARTESIAN_POSTURE_SUFFIX = "/cart/command_posture";
+ //static const std::string CARTESIAN_GAINS_SUFFIX = "/cart/gains";
+@@ -1303,6 +1304,30 @@
+   return true;
+ }  
+ 
++std::string MechanismInterface::getRunningArmController(std::string arm_name)
++{
++  std::vector<std::string> possible_ctrls, loaded_ctrls;
++  possible_ctrls.push_back(cartesianControllerName(arm_name));
++  possible_ctrls.push_back(jointControllerName(arm_name));
++
++  // look at this parameter to see if others have loaded different controllers
++  // on this arm to look for
++  if(root_nh_.hasParam(LOADED_CTRLS_PARAM + "/" + arm_name))
++  {
++    loaded_ctrls = handDescription().getVectorParam(LOADED_CTRLS_PARAM + "/" + arm_name);
++    possible_ctrls.insert(possible_ctrls.end(), loaded_ctrls.begin(), loaded_ctrls.end());
++  }
++
++  bool running;
++  for(size_t i = 0; i < possible_ctrls.size(); i++)
++  {
++    running = checkController(possible_ctrls[i]);
++    if(running)
++      return possible_ctrls[i];
++  }
++  return "";
++}
++
+ bool MechanismInterface::switchControllers(std::string start_controller, std::string stop_controller)
+ {
+   ROS_DEBUG_NAMED("manipulation","Switching controller %s for %s", start_controller.c_str(), stop_controller.c_str());
+@@ -1436,17 +1461,30 @@
+ {
+   //set the desired posture to the current joint angles first
+   setCartesianPostureGoalToCurrentAngles(arm_name);
++
++  // Get the name of the currently running controller
++  std::string running_ctrl = getRunningArmController(arm_name);
+   
+-  //switch controllers
+-  bool result = switchControllers(cartesianControllerName(arm_name), jointControllerName(arm_name));
+-  if(!result) return false;
++  if(running_ctrl.compare("") == 0) // no controller running
++    return startController(cartesianControllerName(arm_name));
++  if(running_ctrl.compare(cartesianControllerName(arm_name)) != 0)  // controllers different
++    return switchControllers(cartesianControllerName(arm_name), running_ctrl);
++  // controllers same
++  ROS_INFO("Tried to switch to the %s Cartesian controller but it is already running.", arm_name.c_str());
+   return true;
+ }
+ 
+ bool MechanismInterface::switchToJoint(std::string arm_name)
+ {
+-  bool result = switchControllers(jointControllerName(arm_name), cartesianControllerName(arm_name));
+-  if(!result) return false;
++  // Get the name of the currently running controller
++  std::string running_ctrl = getRunningArmController(arm_name);
++  
++  if(running_ctrl.compare("") == 0) // no controller running
++    return startController(jointControllerName(arm_name));
++  if(running_ctrl.compare(jointControllerName(arm_name)) != 0)  // controllers different
++    return switchControllers(jointControllerName(arm_name), running_ctrl);
++  // controllers same
++  ROS_INFO("Tried to switch to the %s joint controller but it is already running.", arm_name.c_str());
+   return true;
+ }
+ 
